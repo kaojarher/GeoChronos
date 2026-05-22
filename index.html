@@ -174,7 +174,7 @@ input[type="text"], input[type="number"], select{background:#0a1526;border:1px s
       <div class="cfg-field"><label>中心點緯度 (Lat)</label><input type="number" id="cfg-init-lat" value="22.805" step="0.001"></div>
       <div class="cfg-field"><label>中心點經度 (Lng)</label><input type="number" id="cfg-init-lng" value="120.355" step="0.001"></div>
       <div class="cfg-field"><label>基本地圖縮放 (Zoom)</label><input type="number" id="cfg-zoom-map" value="13" min="1" max="18"></div>
-      <div class="cfg-field"><label>衛星放大刻度 (Sat Zoom)</label><input type="number" id="cfg-zoom-sat" value="15" min="1" max="20"></div>
+      <div class="cfg-field"><label>衛星放大刻度 (Sat Zoom)</label><input type="number" id="cfg-zoom-sat" value="18" min="1" max="20"></div>
     </div>
     <div><button class="btn-action" onclick="applyMapConfig()">儲存並套用新視角</button></div>
   </div>
@@ -203,11 +203,11 @@ input[type="text"], input[type="number"], select{background:#0a1526;border:1px s
 </div>
 
 <script>
-// --- 全域組態狀態（預設定位至阿公店水庫，初始放大為衛星照刻度 15） ---
+// --- 全域組態狀態（預設定位至阿公店水庫，初始放大為衛星照刻度 18） ---
 let CONFIG = {
   title: "阿公店水庫風景導覽",
   lat: 22.8015, lng: 120.3523,
-  zoomMap: 13, zoomSat: 15,
+  zoomMap: 18, zoomSat: 18,
   labels: ["無障礙程度", "設施", "適合族群", "活動", "寵物"],
   ttsVoiceURI: "",
   ttsPitch: 1.0,
