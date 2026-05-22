@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>阿公店水庫風景導覽與語音播報系統</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#040912;--card:#091424;--border:#133154;
+  --primary:#00ffcc;--us:#00d4ff;--il:#ff9500;--ir:#ff3060;--gold:#ffd700;
+  --dim:#557193;--txt:#cce0ff;
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Noto Sans TC',sans-serif;overflow:hidden}
+
+/* TOP BAR */
+#topbar{
+  position:fixed;top:0;left:0;right:0;z-index:1000;
+  background:rgba(4,9,18,.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);padding:10px 14px;
+  display:flex;align-items:center;gap:10px;min-height:56px;
+}
+.op-title{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:var(--primary);letter-spacing:1px;text-shadow:0 0 12px rgba(0,255,204,.6)}
+.hd-stats{display:flex;gap:14px;margin-left:auto;align-items:center}
+.hs{text-align:center;line-height:1.3}
+.hs .v{font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:700;color:#fff}
+.hs .l{font-size:10px;color:var(--dim)}
+
+/* MAP & UI */
+#map{position:fixed;top:56px;left:0;right:0;bottom:300px;z-index:1;}
+#layer-toggle{position:absolute;top:10px;right:10px;z-index:600;display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.6);}
+.lt-btn{background:rgba(4,9,18,.88);backdrop-filter:blur(8px);color:var(--dim);font-size:14px;font-weight:700;padding:10px 14px;cursor:pointer;border:none;transition:all .2s;}
+.lt-btn.active{background:rgba(0,255,204,.2);color:var(--primary);}
+
+#ev-nav{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:600;display:flex;align-items:center;gap:10px;}
+.nav-btn{background:rgba(4,9,18,.88);backdrop-filter:blur(8px);border:1px solid var(--border);color:var(--primary);font-size:26px;width:56px;height:56px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.ev-counter{background:rgba(4,9,18,.88);backdrop-filter:blur(8px);border:1px solid var(--border);font-family:'Orbitron',sans-serif;font-size:14px;color:var(--gold);padding:8px 16px;border-radius:24px;white-space:nowrap;}
+
+.side-fab{position:absolute;bottom:10px;z-index:600;width:56px;height:56px;border-radius:50%;border:1px solid var(--primary);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px rgba(0,255,204,.3);}
+#fab-play{right:14px;background:rgba(0,255,204,.15);color:var(--primary);}
+#fab-config{left:14px;background:rgba(19,49,84,.8);color:var(--primary);border-color:var(--border);}
+
+/* BOTTOM PANEL */
+#bottom{position:fixed;bottom:0;left:0;right:0;z-index:900;height:300px;background:rgba(4,9,18,.97);backdrop-filter:blur(14px);border-top:2px solid var(--border);display:flex;flex-direction:column;padding-bottom:var(--safe-bottom);}
+#slider-row{padding:10px 16px 8px;border-bottom:1px solid rgba(19,49,84,.5);flex-shrink:0;}
+.sl-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.h-badge{font-family:'Orbitron',sans-serif;font-size:15px;color:var(--gold);background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.3);padding:4px 10px;border-radius:4px;}
+.day-badge{font-size:13px;color:var(--dim);font-weight:700;}
+#tl-slider{width:100%;-webkit-appearance:none;height:6px;border-radius:3px;outline:none;cursor:pointer;background:var(--border);}
+#tl-slider::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--primary);border:3px solid #fff;}
+
+#ev-card{flex:1;overflow:hidden;padding:10px 14px;display:flex;flex-direction:column;gap:5px;}
+.ev-top{display:flex;align-items:center;gap:8px}
+.tag{font-size:12px;padding:3px 8px;border-radius:3px;font-weight:700;background:rgba(0,255,204,.15);color:var(--primary);border:1px solid rgba(0,255,204,.3)}
+.ev-time{font-family:'Orbitron',sans-serif;font-size:12px;color:var(--dim);margin-left:auto}
+.ev-title{font-size:16px;font-weight:700;color:#fff;}
+.ev-detail{font-size:13px;color:var(--dim);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+
+#stats-ribbon{display:flex;border-top:1px solid rgba(19,49,84,.5);flex-shrink:0;}
+.sr-item{flex:1;text-align:center;padding:6px 2px;border-right:1px solid rgba(19,49,84,.4)}
+.sr-v{font-family:'Noto Sans TC',sans-serif;font-size:12px;font-weight:700;color:#fff}
+.sr-l{font-size:10px;color:var(--dim);margin-top:2px}
+
+/* CONFIG OVERLAY PANEL */
+#config-panel{
+  position:fixed;inset:0;z-index:2000;background:rgba(4,9,18,.98);
+  padding:20px;overflow-y:auto;display:none;flex-direction:column;gap:15px;
+}
+.cfg-header{display:flex;justify-content:between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px;}
+.cfg-title{font-size:18px;font-weight:700;color:var(--primary)}
+.close-btn{background:none;border:none;color:var(--risk);font-size:24px;cursor:pointer;margin-left:auto}
+.cfg-section{background:rgba(19,49,84,.3);border:1px solid var(--border);padding:14px;border-radius:6px;display:flex;flex-direction:column;gap:10px;}
+.cfg-section h4{font-size:14px;color:var(--gold);margin-bottom:4px}
+.cfg-row{display:flex;gap:10px;flex-wrap:wrap}
+.cfg-field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;}
+.cfg-field label{font-size:12px;color:var(--dim)}
+input[type="text"], input[type="number"], select{background:#0a1526;border:1px solid var(--border);color:#fff;padding:8px;border-radius:4px;font-family:inherit;}
+.btn-action{background:var(--border);color:#fff;border:1px solid var(--primary);padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:700;font-size:13px;transition:all .2s;}
+.btn-action:hover{background:rgba(0,255,204,.2)}
+#file-input{display:none}
+
+.pt{font-size:14px;font-weight:700;color:var(--primary);margin-bottom:6px;}
+.pd{font-size:12px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="op-title" id="top-title">AGONGDIAN RESERVOIR</div>
+  <div class="hd-stats">
+    <div class="hs"><div class="v" id="hd-lbl1">-</div><div class="l" id="hd-lbl1-txt">無障礙程度</div></div>
+    <div class="hs"><div class="v" id="hd-lbl2">-</div><div class="l" id="hd-lbl2-txt">設施</div></div>
+    <div class="hs"><div class="v" id="hd-lbl3">-</div><div class="l" id="hd-lbl3-txt">適合族群</div></div>
+  </div>
+</div>
+
+<div id="map">
+  <div id="layer-toggle">
+    <button class="lt-btn" id="lt-osm" onclick="setLayer('osm')">地圖</button>
+    <button class="lt-btn active" id="lt-sat" onclick="setLayer('sat')">衛星</button>
+  </div>
+  <div id="ev-nav">
+    <button class="nav-btn" onclick="prevEv()">‹</button>
+    <div class="ev-counter" id="ev-counter">0 / 0</div>
+    <button class="nav-btn" onclick="nextEv()">›</button>
+  </div>
+  <button class="side-fab" id="fab-config" onclick="toggleConfig(true)">⚙</button>
+  <button class="side-fab" id="fab-play" onclick="togglePlay()">▶</button>
+</div>
+
+<div id="bottom">
+  <div id="slider-row">
+    <div class="sl-top">
+      <div class="h-badge" id="hbadge">-</div>
+      <div class="day-badge" id="dbadge">未載入資料</div>
+    </div>
+    <input type="range" id="tl-slider" min="0" value="0" step="1">
+  </div>
+
+  <div id="ev-card">
+    <div class="ev-top">
+      <span class="tag" id="ev-tag">風景分類</span>
+      <span class="ev-time" id="ev-time">-</span>
+    </div>
+    <div class="ev-title" id="ev-title">載入中...</div>
+    <div class="ev-detail" id="ev-detail">正在初始化阿公店水庫風景導覽。</div>
+  </div>
+
+  <div id="stats-ribbon">
+    <div class="sr-item"><div class="sr-v" id="sr-v1">-</div><div class="sr-l" id="sr-l1">無障礙程度</div></div>
+    <div class="sr-item"><div class="sr-v" id="sr-v2">-</div><div class="sr-l" id="sr-l2">設施</div></div>
+    <div class="sr-item"><div class="sr-v" id="sr-v3">-</div><div class="sr-l" id="sr-l3">適合族群</div></div>
+    <div class="sr-item"><div class="sr-v" id="sr-v4">-</div><div class="sr-l" id="sr-l4">活動</div></div>
+    <div class="sr-item"><div class="sr-v" id="sr-v5">-</div><div class="sr-l" id="sr-l5">寵物</div></div>
+  </div>
+</div>
+
+<div id="config-panel">
+  <div class="cfg-header">
+    <div class="cfg-title">⚙ 平台推演數據與初始化設定</div>
+    <button class="close-btn" onclick="toggleConfig(false)">×</button>
+  </div>
+
+  <div class="cfg-section">
+    <h4>🔊 語音導覽設定 (Text-To-Speech Settings)</h4>
+    <div class="cfg-row">
+      <div class="cfg-field" style="min-width: 250px;">
+        <label>選擇語音包/聲音 (Voice)</label>
+        <select id="cfg-tts-voice"><option value="">載入系統語音中...</option></select>
+      </div>
+      <div class="cfg-field">
+        <label>語調 (Pitch: 0.5 ~ 2)</label>
+        <input type="number" id="cfg-tts-pitch" value="1.0" min="0.5" max="2.0" step="0.1">
+      </div>
+      <div class="cfg-field">
+        <label>語速 (Rate: 0.5 ~ 2)</label>
+        <input type="number" id="cfg-tts-rate" value="1.0" min="0.5" max="2.0" step="0.1">
+      </div>
+    </div>
+    <div>
+      <button class="btn-action" style="border-color: var(--us); color: var(--us);" onclick="testTTS()">🔊 測試語音播報</button>
+    </div>
+  </div>
+
+  <div class="cfg-section">
+    <h4>1. 初始地圖與鏡頭刻度設定 (Map Settings)</h4>
+    <div class="cfg-row">
+      <div class="cfg-field"><label>專案標題</label><input type="text" id="cfg-proj-title" value="阿公店水庫風景導覽"></div>
+      <div class="cfg-field"><label>中心點緯度 (Lat)</label><input type="number" id="cfg-init-lat" value="22.805" step="0.001"></div>
+      <div class="cfg-field"><label>中心點經度 (Lng)</label><input type="number" id="cfg-init-lng" value="120.355" step="0.001"></div>
+      <div class="cfg-field"><label>基本地圖縮放 (Zoom)</label><input type="number" id="cfg-zoom-map" value="13" min="1" max="18"></div>
+      <div class="cfg-field"><label>衛星放大刻度 (Sat Zoom)</label><input type="number" id="cfg-zoom-sat" value="15" min="1" max="20"></div>
+    </div>
+    <div><button class="btn-action" onclick="applyMapConfig()">儲存並套用新視角</button></div>
+  </div>
+
+  <div class="cfg-section">
+    <h4>2. 自訂數據與指標欄位名稱 (Attributes Mapping)</h4>
+    <div class="cfg-row">
+      <div class="cfg-field"><label>欄位 1 名稱</label><input type="text" id="cfg-lbl-1" value="無障礙程度"></div>
+      <div class="cfg-field"><label>欄位 2 名稱</label><input type="text" id="cfg-lbl-2" value="設施"></div>
+      <div class="cfg-field"><label>欄位 3 名稱</label><input type="text" id="cfg-lbl-3" value="適合族群"></div>
+      <div class="cfg-field"><label>欄位 4 名稱</label><input type="text" id="cfg-lbl-4" value="活動"></div>
+      <div class="cfg-field"><label>欄位 5 名稱</label><input type="text" id="cfg-lbl-5" value="寵物"></div>
+    </div>
+    <div><button class="btn-action" onclick="applyLabelsConfig()">套用自訂指標欄位</button></div>
+  </div>
+
+  <div class="cfg-section">
+    <h4>3. 本地端 XLSX 資料對接 (Excel I/O)</h4>
+    <p style="font-size:12px; color:var(--dim)">您可以下載當前資料結構的標準範本、修改內容後再行讀回，完全免除後端伺服器負擔。</p>
+    <div class="cfg-row" style="margin-top:5px;">
+      <button class="btn-action" style="border-color:var(--gold); color:var(--gold);" onclick="exportToExcel()">📥 匯出 Excel 資料到本地</button>
+      <button class="btn-action" style="border-color:var(--primary); color:var(--primary);" onclick="triggerFileInput()">📤 匯入本地 Excel 資料 (.xlsx)</button>
+      <input type="file" id="file-input" accept=".xlsx, .xls" onchange="importFromExcel(event)">
+    </div>
+  </div>
+</div>
+
+<script>
+// --- 全域組態狀態（預設定位至阿公店水庫，初始放大為衛星照刻度 15） ---
+let CONFIG = {
+  title: "阿公店水庫風景導覽",
+  lat: 22.8015, lng: 120.3523,
+  zoomMap: 13, zoomSat: 15,
+  labels: ["無障礙程度", "設施", "適合族群", "活動", "寵物"],
+  ttsVoiceURI: "",
+  ttsPitch: 1.0,
+  ttsRate: 1.0
+};
+
+// --- 依風景區完工與歷史演進時間排序之事件集 ---
+let EVENTS = [
+  { 時間標籤:"1953年", 分組:"💧 水利核心", 事件名稱:"阿公店水庫大壩完工", 緯度:22.8052, 經度:120.3478, 詳細內文:"臺灣戰後最早完成的水庫，具有防洪、灌溉及給水多功能，是大崗山地區最重要的水利基石，近年大壩結構與溢洪道亦持續優化。", 指標1:"高度友善 (平坦路面)", 指標2:"管理中心、洗手間", 指標3:"全家大小、文史愛好者", 指標4:"散步、風景遠眺", 指標5:"可(需牽繩)" },
+  { 時間標籤:"2010年", 分組:"🚴 景態建設", 事件名稱:"阿公店自行車道落成", 緯度:22.7985, 經度:120.3562, 詳細內文:"全臺首座專門圍繞水庫設計的自行車道，全長近10公里，串聯阿公店十景，沿途林蔭茂密、水色怡人。", 指標1:"中度友善 (部分微幅坡度)", 指標2:"自行車租借站、休憩涼亭", 指標3:"單車客、健行運動族", 指標4:"單車環湖、路跑體能訓練", 指標5:"可(單車共行需注意安全)" },
+  { 時間標籤:"2010年", 分組:"🌉 景點地標", 事件名稱:"日昇蓬萊吊橋竣工", 緯度:22.7972, 經度:120.3491, 詳細內文:"與環庫自行車道同步開通，橫跨水庫兩岸。清晨時分於橋上可遠眺東方燕巢尖山日出，為阿公店知名打卡點。", 指標1:"中度友善 (橋頭有安全阻車樁)", 指標2:"景觀吊橋、拍照平台", 指標3:"網美、情侶、晨型遊客", 指標4:"迎曙光、拍照、登高望遠", 指標5:"可(需注意毛孩是否畏高)" },
+  { 時間標籤:"2016年", 分組:"🌿 綠能生態", 事件名稱:"水上波光水面光電系統啟用", 緯度:22.8035, 經度:120.3545, 詳細內文:"利用寬闊的水域面積，裝設滯洪池漂浮式太陽光電發電系統，完美結合現代乾淨能源、綠能轉型與生態滯洪景觀。", 指標1:"僅供遠眺 (無障礙環境不限)", 指標2:"解說牌面", 指標3:"科技生態關注者、教學團體", 指標4:"綠能科普參觀、遠眺攝影", 指標5:"不適用 (僅限遠眺)" },
+  { 時間標籤:"2021年", 分組:"🌳 休閒場域", 事件名稱:"阿公店森林公園優化完工", 緯度:22.8125, 經度:120.3588, 詳細內文:"由荒廢地改造而成的生態森林公園，歷經多期優化工程。園區廣植原生樹種、營造螢火蟲生態棲地與森林環狀步道。", 指標1:"高度友善 (有無障礙步道)", 指標2:"生態滯洪池、兒童遊具、車場", 指標3:"親子家庭、野餐族、露營愛好者", 指標4:"野餐、草地奔跑、螢火蟲生態觀察", 指標5:"極佳友善 (寬廣草皮空間)" }
+];
+
+// --- 地圖初始化處理 ---
+const map = L.map('map',{center:[CONFIG.lat, CONFIG.lng], zoom:CONFIG.zoomSat, zoomControl:false, attributionControl:false});
+const LAYERS={
+  osm:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
+  sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
+};
+LAYERS.sat.addTo(map); 
+let curLayer='sat';
+
+function setLayer(n){
+  if(curLayer===n)return;
+  map.removeLayer(LAYERS[curLayer]);
+  LAYERS[n].addTo(map);
+  curLayer=n;
+  document.querySelectorAll('.lt-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('lt-'+n).classList.add('active');
+  
+  if(EVENTS[curEv]){
+    let zoomLevel = (n === 'sat') ? parseInt(CONFIG.zoomSat) : parseInt(CONFIG.zoomMap);
+    map.setZoom(zoomLevel);
+  }
+}
+
+// --- Web Speech API 語音模組核心邏輯 ---
+let sysVoices = [];
+function initVoiceList() {
+  if (typeof speechSynthesis === 'undefined') return;
+  sysVoices = speechSynthesis.getVoices();
+  const select = document.getElementById('cfg-tts-voice');
+  select.innerHTML = '';
+  
+  // 篩選中文與英文，並優先排序中文
+  let zhVoices = sysVoices.filter(v => v.lang.includes('zh') || v.lang.includes('ZH'));
+  let otherVoices = sysVoices.filter(v => !v.lang.includes('zh') && !v.lang.includes('ZH'));
+  let sorted = zhVoices.concat(otherVoices);
+
+  sorted.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.voiceURI;
+    opt.textContent = `${v.name} (${v.lang})`;
+    if(v.default && !CONFIG.ttsVoiceURI) {
+      opt.selected = true;
+      CONFIG.ttsVoiceURI = v.voiceURI;
+    }
+    select.appendChild(opt);
+  });
+}
+// 部分瀏覽器非同步載入語音包之修正機制
+if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+  speechSynthesis.onvoiceschanged = initVoiceList;
+}
+
+function speakText(txt) {
+  if (typeof speechSynthesis === 'undefined' || !txt) return;
+  // 播報新語音前，中斷之前的語音避免重疊
+  speechSynthesis.cancel();
+  
+  const utter = new SpeechSynthesisUtterance(txt);
+  // 比對使用者選定的 Voice 檔
+  if(CONFIG.ttsVoiceURI) {
+    const target = sysVoices.find(v => v.voiceURI === CONFIG.ttsVoiceURI);
+    if(target) utter.voice = target;
+  }
+  utter.pitch = CONFIG.ttsPitch;
+  utter.rate = CONFIG.ttsRate;
+  speechSynthesis.speak(utter);
+}
+
+function testTTS() {
+  saveTTSConfig();
+  speakText("您好，目前正在測試阿公店水庫語音導覽系統。音調與語速設定正確。");
+}
+
+function saveTTSConfig() {
+  CONFIG.ttsVoiceURI = document.getElementById('cfg-tts-voice').value;
+  CONFIG.ttsPitch = parseFloat(document.getElementById('cfg-tts-pitch').value) || 1.0;
+  CONFIG.ttsRate = parseFloat(document.getElementById('cfg-tts-rate').value) || 1.0;
+}
+
+// --- 控制與動畫邏輯 ---
+let curEv=0, playing=false, piv=null, activeMarker=null;
+
+function applyMapConfig() {
+  CONFIG.title = document.getElementById('cfg-proj-title').value;
+  CONFIG.lat = parseFloat(document.getElementById('cfg-init-lat').value);
+  CONFIG.lng = parseFloat(document.getElementById('cfg-init-lng').value);
+  CONFIG.zoomMap = parseInt(document.getElementById('cfg-zoom-map').value);
+  CONFIG.zoomSat = parseInt(document.getElementById('cfg-zoom-sat').value);
+  
+  document.getElementById('top-title').textContent = CONFIG.title;
+  let currentZoom = (curLayer === 'sat') ? CONFIG.zoomSat : CONFIG.zoomMap;
+  map.setView([CONFIG.lat, CONFIG.lng], currentZoom);
+  saveTTSConfig();
+  toggleConfig(false);
+}
+
+function applyLabelsConfig() {
+  CONFIG.labels = [
+    document.getElementById('cfg-lbl-1').value,
+    document.getElementById('cfg-lbl-2').value,
+    document.getElementById('cfg-lbl-3').value,
+    document.getElementById('cfg-lbl-4').value,
+    document.getElementById('cfg-lbl-5').value
+  ];
+  updateLabelsUI();
+  saveTTSConfig();
+  toggleConfig(false);
+  if(EVENTS.length > 0) showEvent(curEv);
+}
+
+function updateLabelsUI() {
+  document.getElementById('hd-lbl1-txt').textContent = CONFIG.labels[0];
+  document.getElementById('hd-lbl2-txt').textContent = CONFIG.labels[1];
+  document.getElementById('hd-lbl3-txt').textContent = CONFIG.labels[2];
+  document.getElementById('sr-l1').textContent = CONFIG.labels[0];
+  document.getElementById('sr-l2').textContent = CONFIG.labels[1];
+  document.getElementById('sr-l3').textContent = CONFIG.labels[2];
+  document.getElementById('sr-l4').textContent = CONFIG.labels[3];
+  document.getElementById('sr-l5').textContent = CONFIG.labels[4];
+}
+
+function mkIcon(col){
+  return L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],
+    html:`<div style="width:20px;height:20px;border-radius:50%;background:${col};border:3px solid #fff;box-shadow:0 0 10px ${col};"></div>`});
+}
+const defaultIcon = mkIcon('#00ffcc');
+
+function showEvent(idx){
+  if(EVENTS.length === 0) return;
+  curEv=Math.max(0,Math.min(EVENTS.length-1,idx));
+  const ev=EVENTS[curEv];
+  
+  if(activeMarker){map.removeLayer(activeMarker);}
+  activeMarker=L.marker([ev.緯度, ev.經度],{icon:defaultIcon}).addTo(map)
+    .bindPopup(`<div class="pt">${ev.事件名稱}</div><div class="pd">${ev.時間標籤} · 風景點焦點<br><br>${ev.詳細內文 || ev.detail || ''}</div>`);
+  
+  let targetZoom = (curLayer === 'sat') ? parseInt(CONFIG.zoomSat) : parseInt(CONFIG.zoomMap);
+  map.flyTo([ev.緯度, ev.經度], targetZoom);
+  setTimeout(()=>{activeMarker.openPopup();},800);
+
+  document.getElementById('ev-tag').textContent = ev.分組 || "未知分類";
+  document.getElementById('ev-time').textContent = ev.時間標籤;
+  document.getElementById('ev-title').textContent = ev.事件名稱;
+  document.getElementById('ev-detail').textContent = ev.詳細內文 || ev.detail || "";
+
+  document.getElementById('tl-slider').value = curEv;
+  document.getElementById('hbadge').textContent = ev.時間標籤;
+  document.getElementById('dbadge').textContent = ev.事件名稱;
+  document.getElementById('ev-counter').textContent=`${curEv+1} / ${EVENTS.length}`;
+
+  // 指標資料注入
+  document.getElementById('hd-lbl1').textContent = ev.指標1 || "-";
+  document.getElementById('hd-lbl2').textContent = ev.指標2 || "-";
+  document.getElementById('hd-lbl3').textContent = ev.指標3 || "-";
+  document.getElementById('sr-v1').textContent = ev.指標1 || "-";
+  document.getElementById('sr-v2').textContent = ev.指標2 || "-";
+  document.getElementById('sr-v3').textContent = ev.指標3 || "-";
+  document.getElementById('sr-v4').textContent = ev.指標4 || "-";
+  document.getElementById('sr-v5').textContent = ev.指標5 || "-";
+
+  // 【核心功能注入】：切換景點時同步觸發語音導覽朗讀
+  const ttsScript = `導覽景點：${ev.事件名稱}。${ev.詳細內文 || ev.detail || ''}`;
+  speakText(ttsScript);
+}
+
+function prevEv(){showEvent(curEv-1);}
+function nextEv(){showEvent(curEv+1);}
+function toggleConfig(show){
+  if(show) initVoiceList(); // 開啟設定時刷新語音列表
+  document.getElementById('config-panel').style.display=show?'flex':'none';
+}
+
+function togglePlay(){
+  playing=!playing;
+  document.getElementById('fab-play').textContent=playing?'⏸':'▶';
+  if(playing){
+    // 自動輪播時，因為有語音朗讀，將間隔時間微調拉長至 6 秒
+    piv=setInterval(()=>{
+      if(curEv>=EVENTS.length-1){togglePlay();return;}
+      showEvent(curEv+1);
+    },6500);
+  }else{
+    clearInterval(piv);
+    if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel(); // 暫停時停止發聲
+  }
+}
+
+// --- Excel (XLSX) 匯入與匯出核心運算單元 ---
+function triggerFileInput(){document.getElementById('file-input').click();}
+
+function importFromExcel(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const data = evt.target.result;
+    const workbook = XLSX.read(data, {type: 'binary'});
+    
+    // 讀取工作表 1：設定檔
+    if(workbook.Sheets["環境設定"]) {
+      const cfgRows = XLSX.utils.sheet_to_json(workbook.Sheets["環境設定"]);
+      if(cfgRows.length > 0) {
+        const c = cfgRows[0];
+        document.getElementById('cfg-proj-title').value = c.專案標題 || CONFIG.title;
+        document.getElementById('cfg-init-lat').value = c.中心點緯度 || CONFIG.lat;
+        document.getElementById('cfg-init-lng').value = c.中心點經度 || CONFIG.lng;
+        document.getElementById('cfg-zoom-map').value = c.基本地圖縮放 || CONFIG.zoomMap;
+        document.getElementById('cfg-zoom-sat').value = c.衛星放大刻度 || CONFIG.zoomSat;
+        document.getElementById('cfg-lbl-1').value = c.指標1名稱 || CONFIG.labels[0];
+        document.getElementById('cfg-lbl-2').value = c.指標2名稱 || CONFIG.labels[1];
+        document.getElementById('cfg-lbl-3').value = c.指標3名稱 || CONFIG.labels[2];
+        document.getElementById('cfg-lbl-4').value = c.指標4名稱 || CONFIG.labels[3];
+        document.getElementById('cfg-lbl-5').value = c.指標5名稱 || CONFIG.labels[4];
+        applyMapConfig();
+        applyLabelsConfig();
+      }
+    }
+    
+    // 讀取工作表 2：時空事件資料
+    if(workbook.Sheets["時空事件集"]) {
+      const evRows = XLSX.utils.sheet_to_json(workbook.Sheets["時空事件集"]);
+      if(evRows.length > 0) {
+        EVENTS = evRows;
+        document.getElementById('tl-slider').max = EVENTS.length - 1;
+        curEv = 0;
+        showEvent(0);
+        alert(`成功匯入 ${EVENTS.length} 筆景點導覽事件！`);
+      }
+    }
+    toggleConfig(false);
+  };
+  reader.readAsBinaryString(file);
+}
+
+function exportToExcel() {
+  const cfgData = [{
+    專案標題: CONFIG.title,
+    中心點緯度: CONFIG.lat,
+    中心點經度: CONFIG.lng,
+    基本地圖縮放: CONFIG.zoomMap,
+    衛星放大刻度: CONFIG.zoomSat,
+    指標1名稱: CONFIG.labels[0],
+    指標2名稱: CONFIG.labels[1],
+    指標3名稱: CONFIG.labels[2],
+    指標4名稱: CONFIG.labels[3],
+    指標5名稱: CONFIG.labels[4]
+  }];
+  const wsCfg = XLSX.utils.json_to_sheet(cfgData);
+  const wsEv = XLSX.utils.json_to_sheet(EVENTS);
+  
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsCfg, "環境設定");
+  XLSX.utils.book_append_sheet(wb, wsEv, "時空事件集");
+  
+  XLSX.writeFile(wb, `${CONFIG.title}_導覽資料.xlsx`);
+}
+
+// 啟動設定
+document.getElementById('tl-slider').max = EVENTS.length - 1;
+document.getElementById('tl-slider').addEventListener('input', function(){showEvent(parseInt(this.value));});
+applyMapConfig();
+applyLabelsConfig();
+setTimeout(() => { initVoiceList(); showEvent(0); }, 300); // 預留音訊引擎載入緩衝
+</script>
+</body>
+</html>
