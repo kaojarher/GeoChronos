@@ -259,16 +259,26 @@ function initVoiceList() {
   let otherVoices = sysVoices.filter(v => !v.lang.includes('zh') && !v.lang.includes('ZH'));
   let sorted = zhVoices.concat(otherVoices);
 
+  let firstZhVoiceURI = null;
   sorted.forEach(v => {
     const opt = document.createElement('option');
     opt.value = v.voiceURI;
     opt.textContent = `${v.name} (${v.lang})`;
-    if(v.default && !CONFIG.ttsVoiceURI) {
-      opt.selected = true;
-      CONFIG.ttsVoiceURI = v.voiceURI;
+    // 記錄第一個中文語音
+    if (!firstZhVoiceURI && (v.lang.includes('zh') || v.lang.includes('ZH'))) {
+      firstZhVoiceURI = v.voiceURI;
     }
     select.appendChild(opt);
   });
+
+  // 優先選用中文語音；若尚未由使用者設定，則自動套用
+  if (!CONFIG.ttsVoiceURI && firstZhVoiceURI) {
+    CONFIG.ttsVoiceURI = firstZhVoiceURI;
+  }
+  // 在 <select> 中同步顯示選中項目
+  if (CONFIG.ttsVoiceURI) {
+    select.value = CONFIG.ttsVoiceURI;
+  }
 }
 // 部分瀏覽器非同步載入語音包之修正機制
 if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
@@ -279,13 +289,21 @@ function speakText(txt) {
   if (typeof speechSynthesis === 'undefined' || !txt) return;
   // 播報新語音前，中斷之前的語音避免重疊
   speechSynthesis.cancel();
-  
+
   const utter = new SpeechSynthesisUtterance(txt);
+
   // 比對使用者選定的 Voice 檔
-  if(CONFIG.ttsVoiceURI) {
+  let voiceFound = false;
+  if (CONFIG.ttsVoiceURI) {
     const target = sysVoices.find(v => v.voiceURI === CONFIG.ttsVoiceURI);
-    if(target) utter.voice = target;
+    if (target) { utter.voice = target; voiceFound = true; }
   }
+  // Fallback：若找不到指定語音，強制設定 lang 為繁體中文，
+  // 讓手機瀏覽器自動挑選中文語音，避免預設英文播報
+  if (!voiceFound) {
+    utter.lang = 'zh-TW';
+  }
+
   utter.pitch = CONFIG.ttsPitch;
   utter.rate = CONFIG.ttsRate;
   speechSynthesis.speak(utter);
@@ -485,7 +503,33 @@ document.getElementById('tl-slider').max = EVENTS.length - 1;
 document.getElementById('tl-slider').addEventListener('input', function(){showEvent(parseInt(this.value));});
 applyMapConfig();
 applyLabelsConfig();
-setTimeout(() => { initVoiceList(); showEvent(0); }, 300); // 預留音訊引擎載入緩衝
+
+// 手機端語音包載入修正：先等候 onvoiceschanged 確認語音清單就緒再初始化
+function startApp() {
+  initVoiceList();
+  showEvent(0);
+}
+
+if (typeof speechSynthesis !== 'undefined') {
+  // 先嘗試同步取得（桌機 Chrome 通常可立即取到）
+  if (speechSynthesis.getVoices().length > 0) {
+    setTimeout(startApp, 300);
+  } else {
+    // 手機瀏覽器：等 onvoiceschanged 事件後再啟動
+    speechSynthesis.onvoiceschanged = function() {
+      speechSynthesis.onvoiceschanged = null; // 只觸發一次
+      startApp();
+    };
+    // 保險機制：最多等 2 秒，若仍未觸發就直接啟動
+    setTimeout(function() {
+      if (EVENTS.length > 0 && !document.getElementById('ev-title').textContent.includes('阿公店')) {
+        startApp();
+      }
+    }, 2000);
+  }
+} else {
+  setTimeout(startApp, 300);
+}
 </script>
 </body>
 </html>
