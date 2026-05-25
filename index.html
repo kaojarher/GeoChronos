@@ -73,7 +73,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Noto Sa
 }
 .cfg-header{display:flex;justify-content:between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px;}
 .cfg-title{font-size:18px;font-weight:700;color:var(--primary)}
-.close-btn{background:none;border:none;color:var(--risk);font-size:24px;cursor:pointer;margin-left:auto}
+.close-btn{background:none;border:none;color:#ff3060;font-size:24px;cursor:pointer;margin-left:auto}
 .cfg-section{background:rgba(19,49,84,.3);border:1px solid var(--border);padding:14px;border-radius:6px;display:flex;flex-direction:column;gap:10px;}
 .cfg-section h4{font-size:14px;color:var(--gold);margin-bottom:4px}
 .cfg-row{display:flex;gap:10px;flex-wrap:wrap}
@@ -203,7 +203,7 @@ input[type="text"], input[type="number"], select{background:#0a1526;border:1px s
 </div>
 
 <script>
-// --- 全域組態狀態（預設定位至阿公店水庫，初始放大為衛星照刻度 18） ---
+// --- 全域組態狀態 ---
 let CONFIG = {
   title: "阿公店水庫風景導覽",
   lat: 22.8015, lng: 120.3523,
@@ -214,10 +214,10 @@ let CONFIG = {
   ttsRate: 1.0
 };
 
-// --- 依風景區完工與歷史演進時間排序之事件集 ---
+// --- 預設種子事件集 ---
 let EVENTS = [
   { 時間標籤:"1953年", 分組:"💧 水利核心", 事件名稱:"阿公店水庫大壩完工", 緯度:22.8052, 經度:120.3478, 詳細內文:"臺灣戰後最早完成的水庫，具有防洪、灌溉及給水多功能，是大崗山地區最重要的水利基石，近年大壩結構與溢洪道亦持續優化。", 指標1:"高度友善 (平坦路面)", 指標2:"管理中心、洗手間", 指標3:"全家大小、文史愛好者", 指標4:"散步、風景遠眺", 指標5:"可(需牽繩)" },
-  { 時間標籤:"2010年", 分組:"🚴 景態建設", 事件名稱:"阿公店自行車道落成", 緯度:22.7985, 經度:120.3562, 詳細內文:"全臺首座專門圍繞水庫設計的自行車道，全長近10公里，串聯阿公店十景，沿途林蔭茂密、水色怡人。", 指標1:"中度友善 (部分微幅坡度)", 指標2:"自行車租借站、休憩涼亭", 指標3:"單車客、健行運動族", 指4:"單車環湖、路跑體能訓練", 指標5:"可(單車共行需注意安全)" },
+  { 時間標籤:"2010年", 分組:"🚴 景態建設", 事件名稱:"阿公店自行車道落成", 緯度:22.7985, 經度:120.3562, 詳細內文:"全臺首座專門圍繞水庫設計的自行車道，全長近10公里，串聯阿公店十景，沿途林蔭茂密、水色怡人。", 指標1:"中度友善 (部分微幅坡度)", 指標2:"自行車租借站、休憩涼亭", 指標3:"單車客、健行運動族", 指標4:"單車環湖、路跑體能訓練", 指標5:"可(單車共行需注意安全)" },
   { 時間標籤:"2010年", 分組:"🌉 景點地標", 事件名稱:"日昇蓬萊吊橋竣工", 緯度:22.7972, 經度:120.3491, 詳細內文:"與環庫自行車道同步開通，橫跨水庫兩岸。清晨時分於橋上可遠眺東方燕巢尖山日出，為阿公店知名打卡點。", 指標1:"中度友善 (橋頭有安全阻車樁)", 指標2:"景觀吊橋、拍照平台", 指標3:"網美、情侶、晨型遊客", 指標4:"迎曙光、拍照、登高望遠", 指標5:"可(需注意毛孩是否畏高)" },
   { 時間標籤:"2016年", 分組:"🌿 綠能生態", 事件名稱:"水上波光水面光電系統啟用", 緯度:22.8035, 經度:120.3545, 詳細內文:"利用寬闊的水域面積，裝設滯洪池漂浮式太陽光電發電系統，完美結合現代乾淨能源、綠能轉型與生態滯洪景觀。", 指標1:"僅供遠眺 (無障礙環境不限)", 指標2:"解說牌面", 指標3:"科技生態關注者、教學團體", 指標4:"綠能科普參觀、遠眺攝影", 指標5:"不適用 (僅限遠眺)" },
   { 時間標籤:"2021年", 分組:"🌳 休閒場域", 事件名稱:"阿公店森林公園優化完工", 緯度:22.8125, 經度:120.3588, 詳細內文:"由荒廢地改造而成的生態森林公園，歷經多期優化工程。園區廣植原生樹種、營造螢火蟲生態棲地與森林環狀步道。", 指標1:"高度友善 (有無障礙步道)", 指標2:"生態滯洪池、兒童遊具、車場", 指標3:"親子家庭、野餐族、露營愛好者", 指標4:"野餐、草地奔跑、螢火蟲生態觀察", 指標5:"極佳友善 (寬廣草皮空間)" }
@@ -246,8 +246,10 @@ function setLayer(n){
   }
 }
 
-// --- Web Speech API 語音模組核心邏輯 ---
+// --- Web Speech API 語音模組與動態生命週期控制 ---
 let sysVoices = [];
+let fallbackTimeout = null; // 防呆安全定時器，用於語音功能失效時
+
 function initVoiceList() {
   if (typeof speechSynthesis === 'undefined') return;
   sysVoices = speechSynthesis.getVoices();
@@ -280,29 +282,82 @@ if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !=
   speechSynthesis.onvoiceschanged = initVoiceList;
 }
 
+// 清除安全定時器
+function clearFallbackTimer() {
+  if (fallbackTimeout) {
+    clearTimeout(fallbackTimeout);
+    fallbackTimeout = null;
+  }
+}
+
+// 啟動安全防呆定時器（在不支援語音或被靜音時充當備用定時跳轉）
+function startFallbackTimer() {
+  clearFallbackTimer();
+  if (playing) {
+    fallbackTimeout = setTimeout(() => {
+      handlePlaybackNext();
+    }, 7000); // 如果 7 秒內沒觸發語音完畢事件，則強制進入下一步
+  }
+}
+
 function speakText(txt) {
-  if (typeof speechSynthesis === 'undefined' || !txt) return;
-  speechSynthesis.cancel();
-
-  const utter = new SpeechSynthesisUtterance(txt);
-
-  let voiceFound = false;
-  if (CONFIG.ttsVoiceURI) {
-    const target = sysVoices.find(v => v.voiceURI === CONFIG.ttsVoiceURI);
-    if (target) { utter.voice = target; voiceFound = true; }
+  if (typeof speechSynthesis === 'undefined') {
+    startFallbackTimer();
+    return;
   }
-  if (!voiceFound) {
-    utter.lang = 'zh-TW';
+  
+  try {
+    speechSynthesis.cancel();
+  } catch(e) {}
+
+  if (!txt) {
+    startFallbackTimer();
+    return;
   }
 
-  utter.pitch = CONFIG.ttsPitch;
-  utter.rate = CONFIG.ttsRate;
-  speechSynthesis.speak(utter);
+  setTimeout(() => {
+    const utter = new SpeechSynthesisUtterance(txt);
+    let voiceFound = false;
+    if (CONFIG.ttsVoiceURI) {
+      const target = sysVoices.find(v => v.voiceURI === CONFIG.ttsVoiceURI);
+      if (target) { utter.voice = target; voiceFound = true; }
+    }
+    if (!voiceFound) { utter.lang = 'zh-TW'; }
+
+    utter.pitch = CONFIG.ttsPitch;
+    utter.rate = CONFIG.ttsRate;
+    
+    // 【核心修復點】：當這筆語音「真正唸完」後，才觸發下一步的跳轉
+    utter.onend = function() {
+      clearFallbackTimer();
+      if (playing) {
+        // 唸完之後延遲 1.5 秒（給使用者視覺緩衝讀圖時間）再切換到下一筆
+        fallbackTimeout = setTimeout(() => {
+          handlePlaybackNext();
+        }, 1500);
+      }
+    };
+
+    utter.onerror = function() {
+      clearFallbackTimer();
+      startFallbackTimer();
+    };
+    
+    // 開啟語音朗讀時，先預鋪一個長時間的防呆保護（例如 30 秒），防止大長篇文本意外中斷網頁運行
+    if (playing) {
+      clearFallbackTimer();
+      fallbackTimeout = setTimeout(() => {
+        handlePlaybackNext();
+      }, 35000); 
+    }
+
+    speechSynthesis.speak(utter);
+  }, 50);
 }
 
 function testTTS() {
   saveTTSConfig();
-  speakText("您好，目前正在測試阿公店水庫語音導覽系統。音調與語速設定正確。");
+  speakText("目前正在測試音調與語速。");
 }
 
 function saveTTSConfig() {
@@ -312,7 +367,7 @@ function saveTTSConfig() {
 }
 
 // --- 控制與動畫邏輯 ---
-let curEv=0, playing=false, piv=null, activeMarker=null;
+let curEv=0, playing=false, activeMarker=null;
 
 function applyMapConfig() {
   CONFIG.title = document.getElementById('cfg-proj-title').value;
@@ -360,27 +415,41 @@ function mkIcon(col){
 const defaultIcon = mkIcon('#00ffcc');
 
 function showEvent(idx){
-  if(EVENTS.length === 0) return;
-  curEv=Math.max(0,Math.min(EVENTS.length-1,idx));
-  const ev=EVENTS[curEv];
+  if(!EVENTS || EVENTS.length === 0) return;
   
-  if(activeMarker){map.removeLayer(activeMarker);}
-  activeMarker=L.marker([ev.緯度, ev.經度],{icon:defaultIcon}).addTo(map)
-    .bindPopup(`<div class="pt">${ev.事件名稱}</div><div class="pd">${ev.時間標籤} · 風景點焦點<br><br>${ev.詳細內文 || ev.detail || ''}</div>`);
+  curEv = Math.max(0, Math.min(EVENTS.length - 1, idx));
+  const ev = EVENTS[curEv];
+  if(!ev) return;
+
+  const latVal = parseFloat(ev.緯度);
+  const lngVal = parseFloat(ev.經度);
+  const safeLat = isNaN(latVal) ? CONFIG.lat : latVal;
+  const safeLng = isNaN(lngVal) ? CONFIG.lng : lngVal;
   
-  let targetZoom = (curLayer === 'sat') ? parseInt(CONFIG.zoomSat) : parseInt(CONFIG.zoomMap);
-  map.flyTo([ev.緯度, ev.經度], targetZoom);
-  setTimeout(()=>{activeMarker.openPopup();},800);
+  if(activeMarker){
+    try { map.removeLayer(activeMarker); } catch(e){}
+  }
+  
+  try {
+    activeMarker = L.marker([safeLat, safeLng], {icon:defaultIcon}).addTo(map)
+      .bindPopup(`<div class="pt">${ev.事件名稱 || ''}</div><div class="pd">${ev.時間標籤 || ''} · 風景點焦點<br><br>${ev.詳細內文 || ev.detail || ''}</div>`);
+    
+    let targetZoom = (curLayer === 'sat') ? parseInt(CONFIG.zoomSat) : parseInt(CONFIG.zoomMap);
+    map.flyTo([safeLat, safeLng], targetZoom);
+    setTimeout(() => { if(activeMarker) activeMarker.openPopup(); }, 800);
+  } catch(err) {
+    console.error("Leaflet 執行緒保護觸發:", err);
+  }
 
   document.getElementById('ev-tag').textContent = ev.分組 || "未知分類";
-  document.getElementById('ev-time').textContent = ev.時間標籤;
-  document.getElementById('ev-title').textContent = ev.事件名稱;
+  document.getElementById('ev-time').textContent = ev.時間標籤 || "";
+  document.getElementById('ev-title').textContent = ev.事件名稱 || "";
   document.getElementById('ev-detail').textContent = ev.詳細內文 || ev.detail || "";
 
   document.getElementById('tl-slider').value = curEv;
-  document.getElementById('hbadge').textContent = ev.時間標籤;
-  document.getElementById('dbadge').textContent = ev.事件名稱;
-  document.getElementById('ev-counter').textContent=`${curEv+1} / ${EVENTS.length}`;
+  document.getElementById('hbadge').textContent = ev.時間標籤 || "-";
+  document.getElementById('dbadge').textContent = ev.事件名稱 || "-";
+  document.getElementById('ev-counter').textContent = `${curEv + 1} / ${EVENTS.length}`;
 
   document.getElementById('hd-lbl1').textContent = ev.指標1 || "-";
   document.getElementById('hd-lbl2').textContent = ev.指標2 || "-";
@@ -391,28 +460,48 @@ function showEvent(idx){
   document.getElementById('sr-v4').textContent = ev.指標4 || "-";
   document.getElementById('sr-v5').textContent = ev.指標5 || "-";
 
-  const ttsScript = `導覽景點：${ev.事件名稱}。${ev.詳細內文 || ev.detail || ''}`;
+  // 【核心修復點】：移除「導覽景點：」前綴字，開頭直奔主題播報
+  const ttsScript = `${ev.事件名稱 || ''}。${ev.詳細內文 || ev.detail || ''}`;
   speakText(ttsScript);
 }
 
-function prevEv(){showEvent(curEv-1);}
-function nextEv(){showEvent(curEv+1);}
+function prevEv(){
+  clearFallbackTimer();
+  showEvent(curEv-1);
+}
+
+function nextEv(){
+  clearFallbackTimer();
+  showEvent(curEv+1);
+}
+
 function toggleConfig(show){
   if(show) initVoiceList(); 
   document.getElementById('config-panel').style.display=show?'flex':'none';
 }
 
+// 處理自動撥放跳下一筆的判斷邏輯
+function handlePlaybackNext() {
+  if (!playing) return;
+  if (curEv >= EVENTS.length - 1) {
+    togglePlay(); // 全部播完，停止播放
+    return;
+  }
+  showEvent(curEv + 1);
+}
+
 function togglePlay(){
-  playing=!playing;
-  document.getElementById('fab-play').textContent=playing?'⏸':'▶';
-  if(playing){
-    piv=setInterval(()=>{
-      if(curEv>=EVENTS.length-1){togglePlay();return;}
-      showEvent(curEv+1);
-    },6500);
-  }else{
-    clearInterval(piv);
-    if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel(); 
+  playing = !playing;
+  document.getElementById('fab-play').textContent = playing ? '⏸' : '▶';
+  if (playing) {
+    // 啟動播放：直接從當前景點出發（呼叫 showEvent 會自動配置語音串接）
+    showEvent(curEv);
+  } else {
+    // 暫停播放：清除所有待執行的延時器並中止聲音
+    clearFallbackTimer();
+    if (typeof speechSynthesis !== 'undefined') {
+      try { speechSynthesis.cancel(); } catch(e){}
+    }
   }
 }
 
@@ -427,7 +516,6 @@ function importFromExcel(e) {
     const data = evt.target.result;
     const workbook = XLSX.read(data, {type: 'binary'});
     
-    // 讀取工作表 1：設定檔
     if(workbook.Sheets["環境設定"]) {
       const cfgRows = XLSX.utils.sheet_to_json(workbook.Sheets["環境設定"]);
       if(cfgRows.length > 0) {
@@ -447,16 +535,17 @@ function importFromExcel(e) {
       }
     }
     
-    // 讀取工作表 2：時空事件資料
     if(workbook.Sheets["時空事件集"]) {
       const evRows = XLSX.utils.sheet_to_json(workbook.Sheets["時空事件集"]);
       if(evRows.length > 0) {
         EVENTS = evRows;
-        // 【核心修正點】：強制重新指派滑桿的 max 屬性與當前數值，確保動態長度完美對接
-        const slider = document.getElementById('tl-slider');
-        slider.max = parseInt(EVENTS.length - 1);
-        slider.value = 0;
+        
+        const sliderNode = document.getElementById('tl-slider');
+        sliderNode.max = Math.max(0, EVENTS.length - 1);
+        sliderNode.value = 0;
+        
         curEv = 0;
+        if(playing) { togglePlay(); } // 匯入新資料時若在播放則先暫停
         showEvent(0);
         alert(`成功匯入 ${EVENTS.length} 筆景點導覽事件！`);
       }
@@ -489,9 +578,12 @@ function exportToExcel() {
   XLSX.writeFile(wb, `${CONFIG.title}_導覽資料.xlsx`);
 }
 
-// 啟動設定
+// 啟動與滑桿事件綁定
 document.getElementById('tl-slider').max = EVENTS.length - 1;
-document.getElementById('tl-slider').addEventListener('input', function(){showEvent(parseInt(this.value));});
+document.getElementById('tl-slider').addEventListener('input', function(){
+  clearFallbackTimer();
+  showEvent(parseInt(this.value));
+});
 applyMapConfig();
 applyLabelsConfig();
 
