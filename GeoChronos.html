@@ -174,7 +174,7 @@ input[type="text"], input[type="number"], select{background:#0a1526;border:1px s
       <div class="cfg-field"><label>中心點緯度 (Lat)</label><input type="number" id="cfg-init-lat" value="22.805" step="0.001"></div>
       <div class="cfg-field"><label>中心點經度 (Lng)</label><input type="number" id="cfg-init-lng" value="120.355" step="0.001"></div>
       <div class="cfg-field"><label>基本地圖縮放 (Zoom)</label><input type="number" id="cfg-zoom-map" value="13" min="1" max="18"></div>
-      <div class="cfg-field"><label>衛星放大刻度 (Sat Zoom)</label><input type="number" id="cfg-zoom-sat" value="15" min="1" max="20"></div>
+      <div class="cfg-field"><label>衛星放大刻度 (Sat Zoom)</label><input type="number" id="cfg-zoom-sat" value="18" min="1" max="20"></div>
     </div>
     <div><button class="btn-action" onclick="applyMapConfig()">儲存並套用新視角</button></div>
   </div>
@@ -203,11 +203,11 @@ input[type="text"], input[type="number"], select{background:#0a1526;border:1px s
 </div>
 
 <script>
-// --- 全域組態狀態（預設定位至阿公店水庫，初始放大為衛星照刻度 15） ---
+// --- 全域組態狀態（預設定位至阿公店水庫，初始放大為衛星照刻度 18） ---
 let CONFIG = {
   title: "阿公店水庫風景導覽",
   lat: 22.8015, lng: 120.3523,
-  zoomMap: 13, zoomSat: 15,
+  zoomMap: 18, zoomSat: 18,
   labels: ["無障礙程度", "設施", "適合族群", "活動", "寵物"],
   ttsVoiceURI: "",
   ttsPitch: 1.0,
@@ -217,7 +217,7 @@ let CONFIG = {
 // --- 依風景區完工與歷史演進時間排序之事件集 ---
 let EVENTS = [
   { 時間標籤:"1953年", 分組:"💧 水利核心", 事件名稱:"阿公店水庫大壩完工", 緯度:22.8052, 經度:120.3478, 詳細內文:"臺灣戰後最早完成的水庫，具有防洪、灌溉及給水多功能，是大崗山地區最重要的水利基石，近年大壩結構與溢洪道亦持續優化。", 指標1:"高度友善 (平坦路面)", 指標2:"管理中心、洗手間", 指標3:"全家大小、文史愛好者", 指標4:"散步、風景遠眺", 指標5:"可(需牽繩)" },
-  { 時間標籤:"2010年", 分組:"🚴 景態建設", 事件名稱:"阿公店自行車道落成", 緯度:22.7985, 經度:120.3562, 詳細內文:"全臺首座專門圍繞水庫設計的自行車道，全長近10公里，串聯阿公店十景，沿途林蔭茂密、水色怡人。", 指標1:"中度友善 (部分微幅坡度)", 指標2:"自行車租借站、休憩涼亭", 指標3:"單車客、健行運動族", 指標4:"單車環湖、路跑體能訓練", 指標5:"可(單車共行需注意安全)" },
+  { 時間標籤:"2010年", 分組:"🚴 景態建設", 事件名稱:"阿公店自行車道落成", 緯度:22.7985, 經度:120.3562, 詳細內文:"全臺首座專門圍繞水庫設計的自行車道，全長近10公里，串聯阿公店十景，沿途林蔭茂密、水色怡人。", 指標1:"中度友善 (部分微幅坡度)", 指標2:"自行車租借站、休憩涼亭", 指標3:"單車客、健行運動族", 指4:"單車環湖、路跑體能訓練", 指標5:"可(單車共行需注意安全)" },
   { 時間標籤:"2010年", 分組:"🌉 景點地標", 事件名稱:"日昇蓬萊吊橋竣工", 緯度:22.7972, 經度:120.3491, 詳細內文:"與環庫自行車道同步開通，橫跨水庫兩岸。清晨時分於橋上可遠眺東方燕巢尖山日出，為阿公店知名打卡點。", 指標1:"中度友善 (橋頭有安全阻車樁)", 指標2:"景觀吊橋、拍照平台", 指標3:"網美、情侶、晨型遊客", 指標4:"迎曙光、拍照、登高望遠", 指標5:"可(需注意毛孩是否畏高)" },
   { 時間標籤:"2016年", 分組:"🌿 綠能生態", 事件名稱:"水上波光水面光電系統啟用", 緯度:22.8035, 經度:120.3545, 詳細內文:"利用寬闊的水域面積，裝設滯洪池漂浮式太陽光電發電系統，完美結合現代乾淨能源、綠能轉型與生態滯洪景觀。", 指標1:"僅供遠眺 (無障礙環境不限)", 指標2:"解說牌面", 指標3:"科技生態關注者、教學團體", 指標4:"綠能科普參觀、遠眺攝影", 指標5:"不適用 (僅限遠眺)" },
   { 時間標籤:"2021年", 分組:"🌳 休閒場域", 事件名稱:"阿公店森林公園優化完工", 緯度:22.8125, 經度:120.3588, 詳細內文:"由荒廢地改造而成的生態森林公園，歷經多期優化工程。園區廣植原生樹種、營造螢火蟲生態棲地與森林環狀步道。", 指標1:"高度友善 (有無障礙步道)", 指標2:"生態滯洪池、兒童遊具、車場", 指標3:"親子家庭、野餐族、露營愛好者", 指標4:"野餐、草地奔跑、螢火蟲生態觀察", 指標5:"極佳友善 (寬廣草皮空間)" }
@@ -254,38 +254,47 @@ function initVoiceList() {
   const select = document.getElementById('cfg-tts-voice');
   select.innerHTML = '';
   
-  // 篩選中文與英文，並優先排序中文
   let zhVoices = sysVoices.filter(v => v.lang.includes('zh') || v.lang.includes('ZH'));
   let otherVoices = sysVoices.filter(v => !v.lang.includes('zh') && !v.lang.includes('ZH'));
   let sorted = zhVoices.concat(otherVoices);
 
+  let firstZhVoiceURI = null;
   sorted.forEach(v => {
     const opt = document.createElement('option');
     opt.value = v.voiceURI;
     opt.textContent = `${v.name} (${v.lang})`;
-    if(v.default && !CONFIG.ttsVoiceURI) {
-      opt.selected = true;
-      CONFIG.ttsVoiceURI = v.voiceURI;
+    if (!firstZhVoiceURI && (v.lang.includes('zh') || v.lang.includes('ZH'))) {
+      firstZhVoiceURI = v.voiceURI;
     }
     select.appendChild(opt);
   });
+
+  if (!CONFIG.ttsVoiceURI && firstZhVoiceURI) {
+    CONFIG.ttsVoiceURI = firstZhVoiceURI;
+  }
+  if (CONFIG.ttsVoiceURI) {
+    select.value = CONFIG.ttsVoiceURI;
+  }
 }
-// 部分瀏覽器非同步載入語音包之修正機制
 if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
   speechSynthesis.onvoiceschanged = initVoiceList;
 }
 
 function speakText(txt) {
   if (typeof speechSynthesis === 'undefined' || !txt) return;
-  // 播報新語音前，中斷之前的語音避免重疊
   speechSynthesis.cancel();
-  
+
   const utter = new SpeechSynthesisUtterance(txt);
-  // 比對使用者選定的 Voice 檔
-  if(CONFIG.ttsVoiceURI) {
+
+  let voiceFound = false;
+  if (CONFIG.ttsVoiceURI) {
     const target = sysVoices.find(v => v.voiceURI === CONFIG.ttsVoiceURI);
-    if(target) utter.voice = target;
+    if (target) { utter.voice = target; voiceFound = true; }
   }
+  if (!voiceFound) {
+    utter.lang = 'zh-TW';
+  }
+
   utter.pitch = CONFIG.ttsPitch;
   utter.rate = CONFIG.ttsRate;
   speechSynthesis.speak(utter);
@@ -373,7 +382,6 @@ function showEvent(idx){
   document.getElementById('dbadge').textContent = ev.事件名稱;
   document.getElementById('ev-counter').textContent=`${curEv+1} / ${EVENTS.length}`;
 
-  // 指標資料注入
   document.getElementById('hd-lbl1').textContent = ev.指標1 || "-";
   document.getElementById('hd-lbl2').textContent = ev.指標2 || "-";
   document.getElementById('hd-lbl3').textContent = ev.指標3 || "-";
@@ -383,7 +391,6 @@ function showEvent(idx){
   document.getElementById('sr-v4').textContent = ev.指標4 || "-";
   document.getElementById('sr-v5').textContent = ev.指標5 || "-";
 
-  // 【核心功能注入】：切換景點時同步觸發語音導覽朗讀
   const ttsScript = `導覽景點：${ev.事件名稱}。${ev.詳細內文 || ev.detail || ''}`;
   speakText(ttsScript);
 }
@@ -391,7 +398,7 @@ function showEvent(idx){
 function prevEv(){showEvent(curEv-1);}
 function nextEv(){showEvent(curEv+1);}
 function toggleConfig(show){
-  if(show) initVoiceList(); // 開啟設定時刷新語音列表
+  if(show) initVoiceList(); 
   document.getElementById('config-panel').style.display=show?'flex':'none';
 }
 
@@ -399,14 +406,13 @@ function togglePlay(){
   playing=!playing;
   document.getElementById('fab-play').textContent=playing?'⏸':'▶';
   if(playing){
-    // 自動輪播時，因為有語音朗讀，將間隔時間微調拉長至 6 秒
     piv=setInterval(()=>{
       if(curEv>=EVENTS.length-1){togglePlay();return;}
       showEvent(curEv+1);
     },6500);
   }else{
     clearInterval(piv);
-    if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel(); // 暫停時停止發聲
+    if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel(); 
   }
 }
 
@@ -446,7 +452,10 @@ function importFromExcel(e) {
       const evRows = XLSX.utils.sheet_to_json(workbook.Sheets["時空事件集"]);
       if(evRows.length > 0) {
         EVENTS = evRows;
-        document.getElementById('tl-slider').max = EVENTS.length - 1;
+        // 【核心修正點】：強制重新指派滑桿的 max 屬性與當前數值，確保動態長度完美對接
+        const slider = document.getElementById('tl-slider');
+        slider.max = parseInt(EVENTS.length - 1);
+        slider.value = 0;
         curEv = 0;
         showEvent(0);
         alert(`成功匯入 ${EVENTS.length} 筆景點導覽事件！`);
@@ -485,7 +494,29 @@ document.getElementById('tl-slider').max = EVENTS.length - 1;
 document.getElementById('tl-slider').addEventListener('input', function(){showEvent(parseInt(this.value));});
 applyMapConfig();
 applyLabelsConfig();
-setTimeout(() => { initVoiceList(); showEvent(0); }, 300); // 預留音訊引擎載入緩衝
+
+function startApp() {
+  initVoiceList();
+  showEvent(0);
+}
+
+if (typeof speechSynthesis !== 'undefined') {
+  if (speechSynthesis.getVoices().length > 0) {
+    setTimeout(startApp, 300);
+  } else {
+    speechSynthesis.onvoiceschanged = function() {
+      speechSynthesis.onvoiceschanged = null; 
+      startApp();
+    };
+    setTimeout(function() {
+      if (EVENTS.length > 0 && !document.getElementById('ev-title').textContent.includes('阿公店')) {
+        startApp();
+      }
+    }, 2000);
+  }
+} else {
+  setTimeout(startApp, 300);
+}
 </script>
 </body>
 </html>
